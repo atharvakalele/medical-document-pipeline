@@ -1,0 +1,9 @@
+langgraph
+langchain-google-genai
+langchain-core
+pydantic
+PyMuPDF
+python-dotenv
+fastapi
+uvicorn[standard]
+python-multipart

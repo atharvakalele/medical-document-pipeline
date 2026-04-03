@@ -1,0 +1,14 @@
+venv/
+.env
+__pycache__/
+*.pyc
+*.png
+api_test_response.json
+pdf_contents.json
+test_api_result.json
+models_out.json
+inspect_output.txt
+inspect_result.txt
+models.txt
+.DS_Store
+*.log
