@@ -11,8 +11,11 @@ from utils.pdf_processing import to_base64
 
 load_dotenv(override=True)
 
-# Model: Gemini 2.5 Flash for vision/extraction
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+def get_llm(api_key: str):
+    # Depending on the key prefix or user choice, you can easily swap this!
+    # E.g., if api_key.startswith('sk-'): return ChatOpenAI(api_key=api_key, model="gpt-4o")
+    # For now, we continue using Gemini for the pipeline logic
+    return ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
 
 SEGREGATOR_PROMPT = """Classify this medical claim document page into exactly ONE of these types:
 - claim_forms: Insurance claim application or request forms
@@ -30,8 +33,9 @@ Return the document_type and your confidence (0.0 to 1.0)."""
 # Limit concurrent LLM calls to prevent rate-limiting on large PDFs
 sem = asyncio.Semaphore(5)
 
-async def classify_single_page(page: dict) -> tuple[int, PageClassification, str]:
+async def classify_single_page(page: dict, api_key: str) -> tuple[int, PageClassification, str]:
     async with sem:
+        llm = get_llm(api_key)
         structured_llm = llm.with_structured_output(PageClassification)
         content = [{"type": "text", "text": SEGREGATOR_PROMPT}]
         if page["text"]:
@@ -48,7 +52,7 @@ async def classify_single_page(page: dict) -> tuple[int, PageClassification, str
             return (page["page_num"], PageClassification(document_type="other", confidence=0.0), str(e))
 
 async def segregator_node(state: PipelineState) -> dict:
-    tasks = [classify_single_page(p) for p in state["pages"]]
+    tasks = [classify_single_page(p, state["gen_ai_api_key"]) for p in state["pages"]]
     results = await asyncio.gather(*tasks)
     
     classifications = {p_num: r.document_type for p_num, r, _ in results}
@@ -81,6 +85,7 @@ async def id_agent_node(state: PipelineState) -> dict:
                 "image_url": {"url": f"data:image/png;base64,{to_base64(page['image_bytes'])}"}
             })
         
+        llm = get_llm(state["gen_ai_api_key"])
         structured_llm = llm.with_structured_output(IdentityData)
         result = await structured_llm.ainvoke([HumanMessage(content=content)])
         return {"id_data": [result.model_dump()]}
@@ -105,6 +110,7 @@ async def discharge_agent_node(state: PipelineState) -> dict:
                 "image_url": {"url": f"data:image/png;base64,{to_base64(page['image_bytes'])}"}
             })
         
+        llm = get_llm(state["gen_ai_api_key"])
         structured_llm = llm.with_structured_output(DischargeData)
         result = await structured_llm.ainvoke([HumanMessage(content=content)])
         return {"discharge_data": [result.model_dump()]}
@@ -129,6 +135,7 @@ async def bill_agent_node(state: PipelineState) -> dict:
                 "image_url": {"url": f"data:image/png;base64,{to_base64(page['image_bytes'])}"}
             })
         
+        llm = get_llm(state["gen_ai_api_key"])
         structured_llm = llm.with_structured_output(BillData)
         result = await structured_llm.ainvoke([HumanMessage(content=content)])
         return {"bill_data": [result.model_dump()]}

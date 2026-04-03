@@ -44,6 +44,7 @@ class BillData(BaseModel):
         return self
 
 class PipelineState(TypedDict):
+    gen_ai_api_key: str                                  # API Key passed from the request
     claim_id: str
     pages: list[dict]                                    # [{page_num, image_bytes, text}]
     page_classifications: dict[int, str]                 # {page_idx: doc_type}

@@ -12,9 +12,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.post("/api/process", summary="Process a medical claim document")
+@app.post("/api/medClaim", summary="Process a medical claim document")
 async def process_claim(
     claim_id: str = Form(..., description="Unique identifier for the claim"),
+    gen_ai_api_key: str = Form(..., description="API key (Gemini, OpenAI, etc.)"),
     file: UploadFile = File(..., description="The medical claim PDF document")
 ):
     """
@@ -39,6 +40,7 @@ async def process_claim(
             
         # Initialize the state for the LangGraph pipeline
         initial_state = {
+            "gen_ai_api_key": gen_ai_api_key,
             "claim_id": claim_id,
             "pages": pages,
             "page_classifications": {},
